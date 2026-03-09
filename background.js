@@ -1,6 +1,7 @@
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
 const MAX_TEXT_LENGTH = 30000;
+const DIGEST_BATCH_SIZE = 40;
 
 // ---------- Context Menu ----------
 
@@ -25,6 +26,277 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     await handleSummarize(tab.url);
   }
 });
+
+// ---------- Toolbar Icon → Digest ----------
+
+chrome.action.onClicked.addListener(async () => {
+  await chrome.tabs.create({
+    url: chrome.runtime.getURL("digest.html"),
+  });
+});
+
+// ---------- Message Handler ----------
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "get-digest") {
+    handleDigest().then(sendResponse).catch((e) =>
+      sendResponse({ error: e.message })
+    );
+    return true; // async
+  }
+  if (message.type === "summarize-url") {
+    handleSummarize(message.url);
+    return false;
+  }
+  if (message.type === "summarize-voice") {
+    handleVoiceSummarize(message).then(sendResponse).catch((e) =>
+      sendResponse({ error: e.message })
+    );
+    return true;
+  }
+});
+
+// ---------- Voice Summarize ----------
+
+async function handleVoiceSummarize({ audioData, mimeType, tabTitle, tabUrl }) {
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    return { error: "APIキーが未設定です。" };
+  }
+
+  // Save loading state and open summary tab
+  await chrome.storage.local.set({
+    summaryData: { status: "loading", url: tabUrl },
+  });
+  await chrome.tabs.create({ url: chrome.runtime.getURL("summary.html") });
+
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            {
+              text: `以下のWebページについて、音声の指示に従って要約・回答してください。
+音声が無言や短い場合は、ページの一般的な要約を返してください。
+
+ページ情報:
+- タイトル: ${tabTitle}
+- URL: ${tabUrl}
+
+出力は必ずHTMLで返してください（マークダウン不可）。
+図解テンプレートは使わず、h2/h3/p/ul/li/strong/blockquote等のシンプルなHTMLで。`,
+            },
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: audioData,
+              },
+            },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 8192,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini APIエラー (${response.status})`);
+    }
+
+    const data = await response.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("応答なし");
+
+    await chrome.storage.local.set({
+      summaryData: {
+        status: "done",
+        url: tabUrl,
+        title: tabTitle,
+        summary: text,
+        sourceType: "web",
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    await chrome.storage.local.set({
+      summaryData: { status: "error", url: tabUrl, error: error.message },
+    });
+    return { error: error.message };
+  }
+}
+
+// ---------- Digest Flow ----------
+
+async function handleDigest() {
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    return { error: "APIキーが設定されていません。設定ページからGemini APIキーを入力してください。" };
+  }
+
+  // Get all tabs
+  const tabs = await chrome.tabs.query({});
+
+  // Filter out extension pages, new tabs, etc.
+  const webTabs = tabs.filter((t) => {
+    if (!t.url) return false;
+    if (t.url.startsWith("chrome://")) return false;
+    if (t.url.startsWith("chrome-extension://")) return false;
+    if (t.url.startsWith("about:")) return false;
+    if (t.url === "edge://newtab/") return false;
+    return true;
+  });
+
+  if (webTabs.length === 0) {
+    return { error: "分析対象のタブがありません。" };
+  }
+
+  // Get tab group info
+  let groupInfo = {};
+  try {
+    const groups = await chrome.tabGroups.query({});
+    for (const g of groups) {
+      groupInfo[g.id] = { title: g.title, color: g.color };
+    }
+  } catch {
+    // tabGroups API not available (e.g., older Chrome)
+  }
+
+  // Prepare tab data for classification
+  const tabData = webTabs.map((t) => ({
+    tabId: t.id,
+    windowId: t.windowId,
+    url: t.url,
+    title: t.title || "",
+    favIconUrl: t.favIconUrl || "",
+    groupId: t.groupId || -1,
+  }));
+
+  // Batch classify with Gemini
+  const classified = await batchClassify(apiKey, tabData);
+
+  // Group by genre
+  const genres = {};
+  for (const item of classified) {
+    const genre = item.genre || "その他";
+    if (!genres[genre]) genres[genre] = [];
+    genres[genre].push(item);
+  }
+
+  return {
+    genres,
+    tabCount: webTabs.length,
+    groupInfo,
+  };
+}
+
+async function batchClassify(apiKey, tabData) {
+  const results = [];
+  const batches = [];
+
+  for (let i = 0; i < tabData.length; i += DIGEST_BATCH_SIZE) {
+    batches.push(tabData.slice(i, i + DIGEST_BATCH_SIZE));
+  }
+
+  for (const batch of batches) {
+    try {
+      const classified = await classifyBatch(apiKey, batch);
+      results.push(...classified);
+    } catch (e) {
+      // If API fails for a batch, return items with "その他" genre
+      console.error("Batch classify failed:", e);
+      for (const item of batch) {
+        results.push({ ...item, genre: "その他", summary: "" });
+      }
+    }
+  }
+
+  return results;
+}
+
+async function classifyBatch(apiKey, batch) {
+  const tabList = batch
+    .map((t, i) => `${i}. ${t.title} | ${t.url}`)
+    .join("\n");
+
+  const prompt = `以下のブラウザタブ一覧をジャンル分類し、各タブの1行要約を付けてください。
+
+## タブ一覧
+${tabList}
+
+## 出力形式
+必ず以下のJSON配列形式で返してください。他のテキストは一切含めないでください。
+[
+  {"index": 0, "genre": "ジャンル名", "summary": "1行要約（30文字以内）"},
+  ...
+]
+
+## ジャンル名の候補（これ以外でも適切なら使ってOK）
+テクノロジー, ビジネス, デザイン, ニュース, エンタメ, 学習・教育, ライフスタイル, 開発ツール, AI・機械学習, マーケティング, ファイナンス, 健康, 科学, スポーツ, 旅行, 料理・グルメ, 音楽, ゲーム, SNS, セキュリティ
+
+## ルール
+- genreは日本語で統一
+- summaryはタイトルとURLから推測できる範囲で簡潔に
+- 同じサイトでもコンテンツが違えば別ジャンルに分類してOK
+- ショッピングサイトの商品ページは「ショッピング」
+- YouTubeはコンテンツ内容で判断（音楽動画→「音楽」、技術動画→「テクノロジー」等）
+- JSONのみ返すこと（markdown code fenceも不要）`;
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    if (response.status === 429) {
+      throw new Error("APIの利用制限に達しました。少し待ってから再試行してください。");
+    }
+    throw new Error(`Gemini APIエラー (${response.status}): ${errorBody}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("Gemini APIから有効な応答が得られませんでした");
+  }
+
+  // Parse JSON (handle potential markdown fences)
+  const cleaned = text
+    .replace(/^```json?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error("APIの応答をJSONとして解析できませんでした");
+  }
+
+  // Merge classification results back into tab data
+  return batch.map((tab, i) => {
+    const classification = parsed.find((p) => p.index === i) || {};
+    return {
+      ...tab,
+      genre: classification.genre || "その他",
+      summary: classification.summary || "",
+    };
+  });
+}
 
 // ---------- Main Flow ----------
 

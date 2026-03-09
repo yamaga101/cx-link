@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Link Summarizer",
-  "version": "2.1.2",
-  "description": "右クリックメニューからリンク先のYouTube動画やウェブ記事をAIで要約します",
+  "version": "2.2.0",
+  "description": "右クリック要約 + タブ一括ダイジェスト。溜まったタブをジャンル別にAI整理",
   "permissions": [
     "contextMenus",
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs",
+    "tabGroups"
   ],
   "host_permissions": [
     "https://*.youtube.com/*",
@@ -15,6 +17,14 @@
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "タブダイジェスト",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "options_page": "options.html",
   "icons": {

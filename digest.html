@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Digest - ジャンル別まとめ</title>
+  <link rel="stylesheet" href="digest.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tab Digest</h1>
+      <p class="subtitle" id="tab-count"></p>
+    </header>
+
+    <div id="loading" class="card loading-card">
+      <div class="spinner"></div>
+      <p class="loading-text">タブを分析中...</p>
+      <p class="loading-sub" id="loading-progress"></p>
+    </div>
+
+    <div id="error" class="card error-card" hidden>
+      <h2>エラー</h2>
+      <p id="error-message"></p>
+    </div>
+
+    <div id="digest" hidden>
+      <div id="stats" class="stats-bar"></div>
+      <div id="genres"></div>
+    </div>
+
+    <footer>
+      <a href="#" id="options-link">設定</a>
+    </footer>
+  </div>
+
+  <script src="digest.js"></script>
+</body>
+</html>

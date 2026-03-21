@@ -1,37 +1,38 @@
 {
-  "manifest_version": 3,
-  "name": "Link Summarizer",
-  "version": "2.3.1",
-  "description": "右クリック要約 + タブ一括ダイジェスト。溜まったタブをジャンル別にAI整理",
-  "permissions": [
-    "contextMenus",
-    "storage",
-    "activeTab",
-    "tabs",
-    "tabGroups",
-    "alarms",
-    "nativeMessaging"
-  ],
-  "host_permissions": [
-    "https://*.youtube.com/*",
-    "https://generativelanguage.googleapis.com/*",
-    "<all_urls>"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_title": "タブダイジェスト",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "options_page": "options.html",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+    "manifest_version": 3,
+    "name": "Link Summarizer",
+    "version": "2.3.1",
+    "description": "右クリック要約 + タブ一括ダイジェスト。溜まったタブをジャンル別にAI整理",
+    "permissions": [
+        "contextMenus",
+        "storage",
+        "activeTab",
+        "tabs",
+        "tabGroups",
+        "alarms",
+        "nativeMessaging"
+    ],
+    "host_permissions": [
+        "https://*.youtube.com/*",
+        "https://generativelanguage.googleapis.com/*",
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "タブダイジェスト",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "options_page": "options.html",
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuJUb8zcs/igZK5rKnjJVTouo1k7EDYi6RFnnz6EW97/2wjWYCiPz5wN5Y4tNYSODN6p09hBsEMqdg/cMU+mOl9w4LUVhiRpjjjQlnKvyQC87z+NUPOvJp03bXB966Vv4Ue7PdzumjpNw5+omRe5YnRVQ5AlSs9Ox7iB2XA5iNnNOXVE+k7Vy0cS5huCH27KEhF2Q5eNwfCco06JxU4+Yv8Ya238464BuXQ44ulVtkYtjw8tLEm+Xb7KOMMLMq2NrHdJvo6eZmW+zWW9uLrCCNJFHiEMDDPYLEh+PjBGHiBKrOBY8iCfwUgv9XRS19uPCUu2+487HELO0AjbO4arngQIDAQAB"
 }

@@ -70,7 +70,7 @@ async function handleVoiceSummarize({ audioData, mimeType, tabTitle, tabUrl }) {
   await chrome.storage.local.set({
     summaryData: { status: "loading", url: tabUrl },
   });
-  await chrome.tabs.create({ url: chrome.runtime.getURL("summary.html") });
+  await chrome.tabs.create({ url: chrome.runtime.getURL("summary.html"), active: false });
 
   try {
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -309,6 +309,7 @@ async function handleSummarize(url) {
   });
   await chrome.tabs.create({
     url: chrome.runtime.getURL("summary.html"),
+    active: false,
   });
 
   try {

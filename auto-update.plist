@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    auto-update.plist
+    Link Summarizer Chrome拡張機能の自動更新 LaunchAgent（Mac用）
+    2分ごとに auto-update.sh を実行する
+
+    インストール方法: setup-auto-update.sh を実行してください
+    手動インストール: __EXTENSION_DIR__ を実際のパスに置換してから
+                     ~/Library/LaunchAgents/ にコピーして
+                     launchctl load ~/Library/LaunchAgents/com.yamaga101.cx-link-auto-update.plist
+-->
+<plist version="1.0">
+<dict>
+    <!-- エージェントの識別子 -->
+    <key>Label</key>
+    <string>com.yamaga101.cx-link-auto-update</string>
+
+    <!-- 実行コマンド -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__EXTENSION_DIR__/auto-update.sh</string>
+    </array>
+
+    <!-- 作業ディレクトリ -->
+    <key>WorkingDirectory</key>
+    <string>__EXTENSION_DIR__</string>
+
+    <!-- 2分ごとに実行（120秒） -->
+    <key>StartInterval</key>
+    <integer>120</integer>
+
+    <!-- ログ出力先 -->
+    <key>StandardOutPath</key>
+    <string>__EXTENSION_DIR__/auto-update.log</string>
+    <key>StandardErrorPath</key>
+    <string>__EXTENSION_DIR__/auto-update.log</string>
+
+    <!-- ログイン後に自動起動 -->
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

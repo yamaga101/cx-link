@@ -1,0 +1,49 @@
+name: Release Chrome Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP
+        run: |
+          zip -r link-summarizer-${{ steps.get_version.outputs.VERSION }}.zip \
+            manifest.json \
+            background.js \
+            auto-reload.js \
+            options.html \
+            options.js \
+            options.css \
+            digest.html \
+            digest.js \
+            digest.css \
+            summary.html \
+            summary.js \
+            summary.css \
+            icons/ \
+            lib/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: link-summarizer-${{ steps.get_version.outputs.VERSION }}.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

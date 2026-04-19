@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Link Summarizer",
-    "version": "2.3.3",
-    "description": "右クリック要約 + タブ一括ダイジェスト。溜まったタブをジャンル別にAI整理",
+    "version": "2.4.0",
+    "description": "右クリック要約 + タブ一括ダイジェスト + MCPブリッジ。Claude Code からタブ情報を参照可能",
     "permissions": [
         "contextMenus",
         "storage",

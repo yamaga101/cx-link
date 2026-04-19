@@ -1,4 +1,5 @@
 importScripts('auto-reload.js');
+importScripts('lib/mcp-bridge.js');
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
